@@ -1,3 +1,20 @@
+# media files
+*.mp4
+*.wav
+
+# oF
+# global
+*.rc
+*.sln
+*.vcxproj
+*.filters
+*.user
+*.make
+# videoPlayer
+VISUALS/Pleine-mer_videoPlayer/bin/*
+VISUALS/Pleine-mer_videoPlayer/obj/*
+VISUALS/Pleine-mer_videoPlayer/.vs/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
