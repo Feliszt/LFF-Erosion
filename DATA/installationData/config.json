@@ -1,0 +1,18 @@
+{
+  "media_folder"              : "D:/PERSO/_CREA/Pleine-mer/_DEV/DATA/videoFiles/",
+  "oF_app"                    : "D:/PERSO/_CREA/Pleine-mer/_DEV/VISUALS/Pleine-mer_videoPlayer/bin/Pleine-mer_videoPlayer.exe",
+  "screen_width"              : 1920,
+  "screen_height"             : 1080,
+  "border_window_x"           : 10,
+  "border_window_y"           : 10,
+  "ratio_min"                 : 0.08,
+  "ratio_max"                 : 0.3,
+  "video_player_time_launch"  : 0.8,
+  "video_history_size"        : 40,
+  "audio_history_size"        : 5,
+  "audio_prob"                : 0.1,
+  "wait_min"                  : 1.0,
+  "wait_max"                  : 10.0,
+  "wait_step_min"             : 5,
+  "wait_step_max"             : 10
+}

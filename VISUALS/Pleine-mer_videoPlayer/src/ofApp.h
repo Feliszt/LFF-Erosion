@@ -12,15 +12,19 @@ class ofApp : public ofBaseApp{
 		// app arguments
 		int			argc;
 		char**		argv;
+		//
+		string		fileName;
+		int			numLoop;
+		float		videoScale;
+		string		fileType;
 
-		// file path
-		string		fileFolder, fileName;
-		int			fileLength;
+		// video folder
+		string		fileFolder;
 
 		// video player
 		ofVideoPlayer		videoPlayer;
-		int					videoWidth, videoHeight, prevFrame, loopCount, numLoopTotal, borderWindow;
+		int					videoWidth, videoHeight, prevFrame, loopCount, borderWindowX, borderWindowY;
 
 		// progress bar
-		float				progressBarSize, progressBarOffset;
+		float				progressBarSize, progressBarOffset, progressBarRoundRadius;
 };

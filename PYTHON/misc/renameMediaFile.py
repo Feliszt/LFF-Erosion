@@ -12,9 +12,6 @@ def get_length(filename):
         stderr=subprocess.STDOUT)
     return float(result.stdout)
 
-file_path = "./video.avi"  # change to your own video path
-
-
 # set folder
 media_folder = "../../DATA/Pleine-mer_media-files/"
 
