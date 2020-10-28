@@ -17,6 +17,8 @@ class ofApp : public ofBaseApp{
 		int			numLoop;
 		float		videoScale;
 		string		fileType;
+		int			windowPosX;
+		int			windowPosY;
 
 		// video folder
 		string		fileFolder;

@@ -110,6 +110,16 @@ while True:
 
     # compute size of window and scale
     video_scale = math.sqrt(limit_ratio * config["screen_width"] * config["screen_height"] / (file_width * file_height))
+    if(file_to_read["type"] == "audioclip") :
+        video_scale = 1.0
+
+    # compute position of window
+    video_pos_x = int(random.uniform(config["border_window_x"], config["screen_width"] - file_width * video_scale - config["border_window_x"]))
+    video_pos_y = int(random.uniform(config["border_window_y"], config["screen_height"] - file_height * video_scale - config["border_window_y"]))
+    if(file_to_read["type"] == "audioclip") :
+        print("audio")
+        video_pos_x = int((config["screen_width"] - file_width) * 0.5)
+        video_pos_y = int((config["screen_height"] - file_height) * 0.5)
 
     # set loop number
     num_loop = 1
@@ -118,8 +128,8 @@ while True:
     elif (file_duration > 5 and file_duration <= 10):
     	num_loop = 2
 
-    # run command
-    video_command = [config["oF_app"], file_name, str(num_loop), str(video_scale), file_to_read["type"]]
+    # run video player
+    video_command = [config["oF_app"], file_name, str(num_loop), str(video_scale), str(video_pos_x), str(video_pos_y)]
     subprocess.Popen(video_command)
     #print(video_command)
 
@@ -156,8 +166,8 @@ while True:
 
     # debug
     print("{}[{}]\tduration = {}\tloops = {}\ttotal duration = {}".format(baseDebug, file_name, file_duration, num_loop, video_duration))
-    print("{}[{}]\tdimension = ({}, {})".format(baseDebug, file_name, file_width, file_height))
-    print("{}[{}]\tscale = {}".format(baseDebug, file_name, video_scale))
+    #print("{}[{}]\tdimension = ({}, {})".format(baseDebug, file_name, file_width, file_height))
+    #print("{}[{}]\tscale = {}".format(baseDebug, file_name, video_scale))
     print("{}[{}]\ttime to end = {}".format(baseDebug, file_name, time_to_end))
     print("{}[{}]\twaiting {} seconds".format(baseDebug, file_name, wait_time_actual))
     if(pick_audio):
