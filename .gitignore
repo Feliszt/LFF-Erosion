@@ -1,6 +1,8 @@
 # media files
 *.mp4
 *.wav
+*.mp3
+*.png
 
 # oF
 # global
@@ -8,12 +10,14 @@
 *.sln
 *.vcxproj
 *.filters
+*.tlog
+*.dll
 *.user
 *.make
 # videoPlayer
-VISUALS/Pleine-mer_videoPlayer/bin/*
-VISUALS/Pleine-mer_videoPlayer/obj/*
-VISUALS/Pleine-mer_videoPlayer/.vs/*
+VISUALS/LFF-Erosion_player/bin/*
+VISUALS/LFF-Erosion_player/obj/*
+VISUALS/LFF-Erosion_player/.vs/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

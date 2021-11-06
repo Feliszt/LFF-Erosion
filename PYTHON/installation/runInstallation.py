@@ -3,8 +3,19 @@ import noise
 import random
 import math
 import time
+import datetime
 import subprocess
 import json
+import cv2
+
+# function that gets the duration of a video file
+def get_duration(filename):
+    result = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                             "format=duration", "-of",
+                             "default=noprint_wrappers=1:nokey=1", filename],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
+    return float(result.stdout)
 
 # map function
 def map(_in, _in_min, _in_max, _out_min, _out_max, _clamp) :
@@ -17,168 +28,151 @@ def map(_in, _in_min, _in_max, _out_min, _out_max, _clamp) :
             return _in_max
     return ((_out_max-_out_min) * _in + _out_min * _in_max - _in_min * _out_max) / (_in_max - _in_min)
 
-# set baseDebug from name of file
-baseDebug = "[{}]\t".format(__file__.split(".")[1][1:])
-
 # read json config file
 with open('../../DATA/installationData/config.json', 'r') as f:
     config = json.load(f)
 
-# read json info file and store data
-with open('../../DATA/installationData/info.json') as f:
-    media_files_info = json.load(f)["media_files_info"]
-
 # init variables
 time_to_end         = 0.0
-loop_count          = 0
-noise_x             = random.uniform(0, 9999)
+video_iter          = 0
+audio_iter          = 0
+time_iter           = 0
+wait_ratio_x        = random.uniform(0, 999)
 video_history       = []
 audio_history       = []
 pick_audio          = False
-wait_time           = config["wait_min"]
-wait_step_num       = int(random.uniform(config["wait_step_min"], config["wait_step_max"]))
-wait_time_target    = random.uniform(config["wait_min"], config["wait_max"])
-wait_step           = (wait_time_target - wait_time) / wait_step_num
-wait_step_count     = 0
+time_2_audio        = random.uniform(config["time_2_audio_min"], config["time_2_audio_max"])
+time_audio_prev     = 0.0
+
+# transform paths to unix path if unix is detected
+video_folder = config["video_folder"]
+audio_folder = config["audio_folder"]
+oF_app = config["oF_app"]
 
 # get list of files
-media_files = os.listdir(config["media_folder"])
+video_files = os.listdir(video_folder)
+audio_files = os.listdir(audio_folder)
 
-# check if all media files in info file are indeed in media folder
-missing_media = False
-missing_media_count = 0
-for info in media_files_info :
-    if(not os.path.exists(config["media_folder"] + info["name"])) :
-        missing_media = True
-        missing_media_count += 1
-        print("{}WARNING!\t[{}] is not present in media folder.".format(baseDebug, info["name"]))
-
-# abort if there is a missing media
-if(missing_media) :
-    print("{}Can't run installation because there are {} missing media.".format(baseDebug, missing_media_count))
-    exit()
-
-# split media in 2 audioclip and video
-video_files_info = []
-audio_files_info = []
-for media in media_files_info :
-    if(media["type"] == "video") :
-        video_files_info.append(media)
-    if(media["type"] == "audioclip") :
-        audio_files_info.append(media)
+# play background
+video_command = [oF_app, video_folder + "../bg_sun_1280x720.mp4", str(-1), str(0.99), str(config["offset_x"]), str(0), str(0), "video"]
+subprocess.Popen(video_command)
+time.sleep(2)
 
 # installation loop
+print("Starting loop.\ttime_2_audio = {}".format(time_2_audio))
 while True:
     # get timing
     loop_time_start = time.time()
 
     # pick video
-    file_name = ""
-    first_pass = True
-    while (file_name in video_history) or first_pass:
-        first_pass = False
-        file_to_read = random.choice(video_files_info)
-        file_name = file_to_read["name"]
+    video_to_read = ""
+    while (video_to_read in video_history) or video_to_read == "":
+        video_to_read = random.choice(video_files)
 
-    # pick audio if boolean has been set
-    if(pick_audio) :
-        first_pass = True
-        while (file_name in audio_history) or first_pass:
-            first_pass = False
-            file_to_read = random.choice(audio_files_info)
-            file_name = file_to_read["name"]
+    # append to history
+    video_history.append(video_to_read)
+    if(len(video_history) > config["video_history_size"]) :
+        video_history = video_history[1:]
 
-        # add audio to history
-        audio_history.append(file_name)
-        if(len(audio_history) > config["audio_history_size"]) :
-            audio_history = audio_history[1:]
-    else :
-        # add video  to history
-        video_history.append(file_name)
-        if(len(video_history) > config["video_history_size"]) :
-            video_history = video_history[1:]
+    # get video info
+    video_file_duration = get_duration(video_folder + video_to_read)
+    cv2_vid = cv2.VideoCapture(video_folder + video_to_read)
+    video_width = int(cv2_vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+    video_height = int(cv2_vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # get info about file
-    file_duration = file_to_read["duration"]
+    # compute scale and position
+    limit_ratio = random.uniform(config["size_ratio_min"], config["size_ratio_max"])
+    video_scale = math.sqrt(limit_ratio * config["screen_width"] * config["screen_height"] / (video_width * video_height))
+    video_pos_x = int(config["offset_x"] + random.uniform(config["border_window_x"], config["screen_width"] - video_width * video_scale - config["border_window_x"]))
+    video_pos_y = int(config["offset_y"] + random.uniform(config["border_window_y"], config["screen_height"] - video_height * video_scale - config["border_window_y"]))
 
-    # get file size
-    file_width = file_to_read["width"]
-    file_height = file_to_read["height"]
+    # compute ratio of time to end before next launch
+    wait_ratio = (config["wait_ratio_max"] - config["wait_ratio_min"]) * 0.25 * (math.sin(2 * wait_ratio_x) + math.sin(math.pi * wait_ratio_x)) + (config["wait_ratio_max"] + config["wait_ratio_min"]) * 0.5
+    wait_ratio_x = wait_ratio_x + 0.1
 
-    # set ratio
-    limit_ratio = random.uniform(config["ratio_min"], config["ratio_max"])
+    # compute time until end of all videos and wait time
+    time_to_end += max(0.0, video_file_duration + config["video_player_time_launch"] - time_to_end)
+    wait_time = time_to_end * random.uniform(wait_ratio, wait_ratio)
 
-    # compute size of window and scale
-    video_scale = math.sqrt(limit_ratio * config["screen_width"] * config["screen_height"] / (file_width * file_height))
-    if(file_to_read["type"] == "audioclip") :
-        video_scale = 1.0
-
-    # compute position of window
-    video_pos_x = int(random.uniform(config["border_window_x"], config["screen_width"] - file_width * video_scale - config["border_window_x"]))
-    video_pos_y = int(random.uniform(config["border_window_y"], config["screen_height"] - file_height * video_scale - config["border_window_y"]))
-    if(file_to_read["type"] == "audioclip") :
-        print("audio")
-        video_pos_x = int((config["screen_width"] - file_width) * 0.5)
-        video_pos_y = int((config["screen_height"] - file_height) * 0.5)
-
-    # set loop number
-    num_loop = 1
-    if (file_duration <= 5):
-    	num_loop = 3
-    elif (file_duration > 5 and file_duration <= 10):
-    	num_loop = 2
-
-    # run video player
-    video_command = [config["oF_app"], file_name, str(num_loop), str(video_scale), str(video_pos_x), str(video_pos_y)]
-    subprocess.Popen(video_command)
-    #print(video_command)
-
-    # set times
-    video_duration = num_loop * file_duration
-    time_to_end += max(0.0, video_duration + config["video_player_time_launch"] - time_to_end)
-
-    # if we are playing an audio file, we wait until the end of the file 2 times in a row
-    if(pick_audio) :
-        wait_time_actual = time_to_end
-    else :
-        # perform wait time increase
-        wait_time += wait_step
-        wait_step_count += 1
-
-        # if we arrived at destination, reset target
-        if(wait_step_count == wait_step_num + 1) :
-            wait_time           = wait_time_target
-            wait_step_num       = int(random.uniform(config["wait_step_min"], config["wait_step_max"]))
-            wait_time_target    = random.uniform(config["wait_min"], config["wait_max"])
-            wait_step           = (wait_time_target - wait_time) / wait_step_num
-            wait_step_count     = 0
-
-        #
-        wait_time_actual = wait_time
-
-    # reset pick_audio
+    # small probability of audio
     pick_audio = False
-
-    # low probability of audio file
-    if(random.uniform(0, 1) < config["audio_prob"]) :
+    audio_info = ""
+    if abs(time_audio_prev - time_iter) >= time_2_audio:
+        audio_info = "=> next is audio"
         pick_audio = True
-        wait_time_actual = time_to_end
+        wait_time = time_to_end
 
     # debug
-    print("{}[{}]\tduration = {}\tloops = {}\ttotal duration = {}".format(baseDebug, file_name, file_duration, num_loop, video_duration))
-    #print("{}[{}]\tdimension = ({}, {})".format(baseDebug, file_name, file_width, file_height))
-    #print("{}[{}]\tscale = {}".format(baseDebug, file_name, video_scale))
-    print("{}[{}]\ttime to end = {}".format(baseDebug, file_name, time_to_end))
-    print("{}[{}]\twaiting {} seconds".format(baseDebug, file_name, wait_time_actual))
-    if(pick_audio):
-        print("{}[{}]\tnext media is audio".format(baseDebug, file_name))
-    #print("[runInstallation]\twait [{}] seconds".format(wait_time))
+    print("#{}\t{:.4f}\t({}, {})\tx {:.2f}\t@ ({}, {})\tnext in {:.4f}\ttime_to_end = {:.4f}\twait_ratio = {:.3f}\t[{}]\t{}".format(video_iter,
+                                                                                                        video_file_duration,
+                                                                                                        video_width,
+                                                                                                        video_height,
+                                                                                                        video_scale,
+                                                                                                        video_pos_x,
+                                                                                                        video_pos_y,
+                                                                                                        wait_time,
+                                                                                                        time_to_end,
+                                                                                                        wait_ratio,
+                                                                                                        video_to_read,
+                                                                                                        audio_info))
 
-    # wait
-    time.sleep(wait_time_actual)
+    # run video player
+    video_command = [oF_app,
+                    video_folder + video_to_read,
+                    str(1),
+                    str(video_scale),
+                    str(video_pos_x),
+                    str(video_pos_y),
+                    str(config["video_volume"]),
+                    "video"]
+    subprocess.Popen(video_command)
+    #subprocess.Popen([oF_app])
 
-    # get timing
+    # wait and update variables
+    time.sleep(wait_time)
+
+    # update variables
     loop_time_end =  time.time()
     loop_duration = loop_time_end - loop_time_start
+    time_iter = time_iter + loop_duration
     time_to_end -= loop_duration
     time_to_end = max(0.0, time_to_end)
+    video_iter = video_iter + 1
+
+    # if audio
+    if pick_audio :
+        # set position and size
+
+
+        # set command
+        audio_command = [oF_app,
+                        audio_folder + audio_files[audio_iter],
+                        str(1),
+                        str(1),
+                        str(config["offset_x"] + (config["screen_width"] - 400) * 0.5),
+                        str(config["offset_y"] + (config["screen_height"] - 200) * 0.5),
+                        str(config["audio_volume"]),
+                        "audioclip"]
+        subprocess.Popen(audio_command)
+
+        # get timings
+        audio_duration = get_duration(audio_folder + audio_files[audio_iter])
+        time_2_audio = random.uniform(config["time_2_audio_min"], config["time_2_audio_max"])
+
+        # info
+        print("#{}/{}\t{:.4f}\t\t\t\t\t\tnext in {:.4f}\t\t\t\t\t\t\t[{}]".format(audio_iter,
+                                                                  len(audio_files),
+                                                                  audio_duration,
+                                                                  time_2_audio,
+                                                                  audio_files[audio_iter]))
+
+        # update variables
+        audio_iter = audio_iter + 1
+        if audio_iter >= len(audio_files) :
+            audio_iter = 0
+
+        # sleep
+        time.sleep(audio_duration)
+        time_audio_prev = time_iter
+
+    #print(str(datetime.timedelta(seconds=time_iter)))

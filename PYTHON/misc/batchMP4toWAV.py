@@ -1,7 +1,7 @@
 import os
 
 # set folders and files
-folder_to_process = "D:/PERSO/_CREA/Pleine-mer/SOUND/pleine-mer-audacity_data/"
+folder_to_process = "D:/PERSO/_CREA/Pleine-mer/_DEV/DATA/videoFiles/test/"
 
 # get files
 files_to_process = os.listdir(folder_to_process)

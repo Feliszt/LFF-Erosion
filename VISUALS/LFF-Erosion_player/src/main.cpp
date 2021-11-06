@@ -3,7 +3,7 @@
 #include "ofAppGLFWWindow.h"
 
 //========================================================================
-int main(int argc, char **argv){
+int main(int argc, char **argv) {
 	ofGLFWWindowSettings settings;
 
 	// main window
