@@ -1,7 +1,7 @@
 import socket
 
 socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket.bind(('', 9000))
+socket.bind(('192.168.1.19', 9000))
 
 while True:
         socket.listen(5)
