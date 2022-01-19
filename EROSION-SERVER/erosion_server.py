@@ -21,7 +21,6 @@ class Erosion_Server :
         self.dispatcher.map("/hello", self.on_hello)
         self.dispatcher.map("/media", self.on_media)
         self.dispatcher.map("/pong", self.on_pong)
-        self.dispatcher.map("/media_duration", self.on_media_duration)
 
         # launch OSC server on server's side to receive connection messages from clients
         self.server_ip = get_ip()
@@ -34,22 +33,36 @@ class Erosion_Server :
         # launch main loop
         launch_thread(self.media_picker())
 
-
     # media picker loop
     def media_picker(self) :
-        time.sleep(5)
-        self.media_query_duration = None
-        rand_cli = random.choice(self.clients)
-        rand_vid = random.choice(list(self.media["videos"].items()))[0]
-        print("{}\n{}".format(rand_cli, rand_vid))
-
-        send_osc_message(rand_cli["OSC"], "/media_duration", (rand_vid, 's'), ("video", 's'))
-        return
+        # init stuff
+        video_history       = []
+        audio_history       = []
 
         while True :
-            print(len(self.media["videos"]))
-            #print("[media_picker]\thehe")
-            time.sleep(2)
+            # skip loop as long as no media is present
+            if len(self.media["videos"]) == 0 :
+                #print("[media_picker]\tmedia list is empty.")
+                time.sleep(5)
+                continue
+
+            # get start time and pick video
+            loop_time_start = time.time()
+            video_to_read = ""
+            while (video_to_read in video_history) or video_to_read == "":
+                video_to_read = random.choice(list(self.media["videos"].items()))
+
+            # pick a random client to play video on and wait
+            video_name = video_to_read[0]
+            video_client = random.choice(video_to_read[1]["clients"])
+            video_duration = video_to_read[1]["duration"]
+
+            # send play command to client
+            send_osc_message(self.get_client_by_ID(video_client)["OSC"], "/play", ("video", 's'), (video_name, 's'))
+
+            # debug
+            print("[media_picker]\tplay video [{}] on client [{}].\twait {} sec.".format(video_name, video_client, video_duration))
+            time.sleep(video_duration)
 
     # return a client object from an ID
     def get_client_by_ID(self, _id) :
@@ -72,6 +85,7 @@ class Erosion_Server :
             if(cli["missing_pongs"] >= 5) :
                 print("Remove module with id [{}] and name [{}]".format(cli["ID"], cli["name"]))
                 self.clients.remove(cli)
+                # TODO : remove media relative to this client
 
     #
     def load_data(self) :
@@ -99,24 +113,22 @@ class Erosion_Server :
         )
 
         # respond back with welcome
-        send_osc_message(self.clients[-1]["OSC"], "/welcome", (self.server_ip, "s"), (self.clients[-1]["ID"], "i"))
+        send_osc_message(self.clients[-1]["OSC"], "/welcome", (self.server_ip, "s"), (self.clients[-1]["ID"], "i"), (self.server_config["ping_pong_interval"], 'f'))
 
-    #
+    # receiving media info from a client
     def on_media(self, address, *args) :
         #print("[on_media]\t{}\t{}".format(address, args))
-        for media in args[2:] :
-            if media not in self.media[args[1]] :
-                self.media[args[1]][media] = []
-            self.media[args[1]][media].append(args[0])
+        for media in zip(args[2::2], args[3::2]) :
+            if media[0] not in self.media[args[1]] :
+                self.media[args[1]][media[0]] = {}
+                self.media[args[1]][media[0]]["clients"] = []
+                self.media[args[1]][media[0]]["duration"] = media[1]
+            self.media[args[1]][media[0]]["clients"].append(args[0])
 
     #
     def on_pong(self, address, *args) :
         #print("[on_pong]\tclient [{}] sends pong.".format(args[0]))
         self.get_client_by_ID(args[0])["missing_pongs"] = 0
-
-    # receive duration query
-    def on_media_duration(self, address, *args) :
-        print("[on_media_duration]\t{}".format(args))
 
 
 # run server

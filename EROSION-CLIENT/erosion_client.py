@@ -10,37 +10,20 @@ import cv2
 
 class Erosion_Client :
 
+    #
     def __init__(self) :
         self.load_data()
         self.run_network()
 
-    def run_network(self) :
-        self.dispatcher = dispatcher.Dispatcher()
-        self.dispatcher.map("/welcome", self.on_welcome)
-        self.dispatcher.map("/ping", self.on_ping)
-        self.dispatcher.map("/media_duration", self.on_media_duration)
+        while True :
+            #print(threading.active_count())
+            time.sleep(1)
 
-        # launch OSC server on client's side to receive commands
-        self.client_ip = get_ip()
-        self.client_id = -1
-        self.client_port = 8001
-        self.server = osc_server.ThreadingOSCUDPServer((self.client_ip, self.client_port), self.dispatcher)
-        launch_thread(self.server.serve_forever)
-
-        # setup connection to server
-        self.server_ip = '.'.join(get_ip().split('.')[:-1] + ["255"])
-        self.client = udp_client.SimpleUDPClient(self.server_ip, 8000)
-
-        # attempt connecting to server until done
-        while self.client_id == -1 :
-            print("Attempt connection to server.")
-            send_osc_message(self.client, "/hello",
-                (self.client_ip, 's'),
-                (self.client_port, 'i'),
-                (self.client_config["name"], 's'))
-            time.sleep(2)
-
+    #
     def load_data(self) :
+        # debug
+        print("[load_data]\tloading data.")
+
         # get client config
         with open('data/config.json', 'r') as f_config :
             self.client_config = json.load(f_config)
@@ -54,16 +37,64 @@ class Erosion_Client :
         self.audios_arg = []
         for el in videos :
             self.videos_arg.append((el, 's'))
+            self.videos_arg.append((self.get_duration("data/installationVideos/" + el), 'f'))
         for el in audios :
             self.audios_arg.append((el, 's'))
+            self.audios_arg.append((self.get_duration("data/installationAudios/" + el), 'f'))
+
+        # debug
+        print("[load_data]\tdone.")
+
+    #
+    def run_network(self) :
+        self.dispatcher = dispatcher.Dispatcher()
+        self.dispatcher.map("/welcome", self.on_welcome)
+        self.dispatcher.map("/play", self.on_play)
+        self.dispatcher.map("/ping", self.on_ping)
+
+        # launch OSC server on client's side to receive commands
+        self.client_ip = get_ip()
+        self.client_id = -1
+        self.client_port = 8001
+        self.server = osc_server.ThreadingOSCUDPServer((self.client_ip, self.client_port), self.dispatcher)
+        launch_thread(self.server.serve_forever)
+
+        # connect to server
+        launch_thread(self.connect_to_server)
+
+    #
+    def connect_to_server(self) :
+        # setup connection to server
+        self.server_ip = '.'.join(get_ip().split('.')[:-1] + ["255"])
+        self.client = udp_client.SimpleUDPClient(self.server_ip, 8000)
+
+        # attempt connecting to server until done
+        while self.client_id == -1 :
+            print("Attempt connection to server.")
+            send_osc_message(self.client, "/hello",
+                (self.client_ip, 's'),
+                (self.client_port, 'i'),
+                (self.client_config["name"], 's'))
+            time.sleep(2)
+
+    #
+    def check_server_pings(self) :
+        while self.client_id != -1 :
+            time.sleep(10)
+            time_2_last_ping = abs(self.ping_time - time.time())
+            print("[check_server_pings]\t{}".format(time_2_last_ping))
+            if time_2_last_ping >= 5 * self.server_ping_inter :
+                print("[check_server_pings]\tserver disconnect.")
+                self.client_id = -1
+        launch_thread(self.connect_to_server)
 
     #
     def send_all_media(self) :
         # send media by chunks
-        for i in range(0, len(self.videos_arg), 50) :
-            send_osc_message(self.client, "/media", (self.client_id, "i"), ("videos", "s"), *self.videos_arg[i:i+50])
-        for i in range(0, len(self.audios_arg), 50) :
-            send_osc_message(self.client, "/media", (self.client_id, "i"), ("audios", "s"), *self.audios_arg[i:i+50])
+        for i in range(0, len(self.videos_arg), 100) :
+            send_osc_message(self.client, "/media", (self.client_id, "i"), ("videos", "s"), *self.videos_arg[i:i+100])
+        for i in range(0, len(self.audios_arg), 100) :
+            send_osc_message(self.client, "/media", (self.client_id, "i"), ("audios", "s"), *self.audios_arg[i:i+100])
 
     # function that gets the duration of a video file
     def get_duration(self, filename):
@@ -76,34 +107,31 @@ class Erosion_Client :
 
     # OSC commands
     def on_welcome(self, address, *args) :
-        # update info on server
+        # debug
         print("[on_welcome]\t{}\t{}".format(address, args))
+
+        #
         self.server_ip = args[0]
         self.client_id = args[1]
         self.client = udp_client.SimpleUDPClient(self.server_ip, 8000)
+        self.server_ping_inter = args[2]
+        self.ping_time = time.time()
+        launch_thread(self.check_server_pings)
 
         # sends media files to server
         self.send_all_media()
 
+    # command to play media
+    def on_play(self, address, *args) :
+        # debug
+        print("[on_play]\t{}\t{}".format(address, args))
+
     # receive ping, send pong to server
     def on_ping(self, address, *args) :
+        # debug
         #print("[on_ping]\tclient [{}] receives ping.".format(self.client_id))
+        self.ping_time = time.time()
         send_osc_message(self.client, "/pong", (self.client_id, 'i'))
-
-    # receive duration query
-    def on_media_duration(self, address, *args) :
-        # discard bad calls
-        if args[1] != "video" and args[1] != "audio":
-            print("[on_media_duration]\tbad arguments.")
-            return
-
-        # get duratin for media
-        media_folder = "installationVideos" if args[1] == "video" else "installationAudios"
-        media_path = "data/{}/{}".format(media_folder, args[0])
-        media_duration = self.get_duration(media_path)
-
-        # send back information to server
-        send_osc_message(self.client, "/media_duration", (self.client_id, 'd'), (args[0], 's'), (media_duration, 'f'))
 
 # run client
 erosion_client = Erosion_Client()
