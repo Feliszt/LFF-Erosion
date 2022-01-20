@@ -2,9 +2,7 @@
   "name"                      : "client_test",
   "audio_type"                : "none",
   "video_type"                : true,
-  "video_folder"              : "D:/PERSO/_CREA/LFF-Erosion/_DEV/DATA/installationVideos/",
-  "audio_folder"              : "D:/PERSO/_CREA/LFF-Erosion/_DEV/DATA/installationAudios/",
-  "oF_app"                    : "D:/PERSO/_CREA/LFF-Erosion/_DEV/VISUALS/LFF-Erosion_player/bin/LFF-Erosion_player.exe",
+  "media_player"              : "LFF-Erosion_player/bin/LFF-Erosion_player.exe",
   "screen_width"              : 1280,
   "screen_height"             : 720,
   "offset_x"                  : 1920,
@@ -17,8 +15,5 @@
   "wait_ratio_max"            : 2.0,
   "audio_volume"              : 7,
   "video_volume"              : 1,
-  "video_player_time_launch"  : 1.0,
-  "video_history_size"        : 50,
-  "time_2_audio_min"          : 60.0,
-  "time_2_audio_max"          : 120.0
+  "video_player_time_launch"  : 1.0
 }

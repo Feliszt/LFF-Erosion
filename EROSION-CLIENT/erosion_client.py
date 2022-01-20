@@ -12,12 +12,13 @@ class Erosion_Client :
 
     #
     def __init__(self) :
+        print("[erosion_client]\tstart.")
         self.load_data()
         self.run_network()
 
-        while True :
-            #print(threading.active_count())
-            time.sleep(1)
+        # play bg media
+        play_media_command = [self.media_player, "background/bg_media.mp4", str(-1), str(0.99), str(0), str(0), str(0), "video"]
+        subprocess.Popen(play_media_command)
 
     #
     def load_data(self) :
@@ -29,18 +30,21 @@ class Erosion_Client :
             self.client_config = json.load(f_config)
 
         # get data list
-        videos = os.listdir("./data/installationVideos/")
-        audios = os.listdir("./data/installationAudios/")
+        videos = os.listdir("./data/video/")
+        audios = os.listdir("./data/audio/")
 
         # create sendable media lists
         self.videos_arg = []
         self.audios_arg = []
         for el in videos :
             self.videos_arg.append((el, 's'))
-            self.videos_arg.append((self.get_duration("data/installationVideos/" + el), 'f'))
+            self.videos_arg.append((self.get_duration("data/video/" + el), 'f'))
         for el in audios :
             self.audios_arg.append((el, 's'))
-            self.audios_arg.append((self.get_duration("data/installationAudios/" + el), 'f'))
+            self.audios_arg.append((self.get_duration("data/audio/" + el), 'f'))
+
+        # set
+        self.media_player = "./tools/" + self.client_config["media_player"]
 
         # debug
         print("[load_data]\tdone.")
@@ -70,7 +74,7 @@ class Erosion_Client :
 
         # attempt connecting to server until done
         while self.client_id == -1 :
-            print("Attempt connection to server.")
+            print("[connect_to_server]\tAttempt connection.")
             send_osc_message(self.client, "/hello",
                 (self.client_ip, 's'),
                 (self.client_port, 'i'),
@@ -82,7 +86,6 @@ class Erosion_Client :
         while self.client_id != -1 :
             time.sleep(10)
             time_2_last_ping = abs(self.ping_time - time.time())
-            print("[check_server_pings]\t{}".format(time_2_last_ping))
             if time_2_last_ping >= 5 * self.server_ping_inter :
                 print("[check_server_pings]\tserver disconnect.")
                 self.client_id = -1

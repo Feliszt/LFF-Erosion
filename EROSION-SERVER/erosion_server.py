@@ -8,6 +8,7 @@ from erosion_utils import *
 class Erosion_Server :
 
     def __init__(self) :
+        print("[erosion_server]\tstart.")
         self.load_data()
         self.run_network()
 
@@ -37,7 +38,6 @@ class Erosion_Server :
     def media_picker(self) :
         # init stuff
         video_history       = []
-        audio_history       = []
 
         while True :
             # skip loop as long as no media is present
@@ -52,6 +52,11 @@ class Erosion_Server :
             while (video_to_read in video_history) or video_to_read == "":
                 video_to_read = random.choice(list(self.media["videos"].items()))
 
+            # append to history
+            video_history.append(video_to_read)
+            if(len(video_history) > self.server_config["video_history_size"]) :
+                video_history = video_history[1:]
+
             # pick a random client to play video on and wait
             video_name = video_to_read[0]
             video_client = random.choice(video_to_read[1]["clients"])
@@ -61,7 +66,8 @@ class Erosion_Server :
             send_osc_message(self.get_client_by_ID(video_client)["OSC"], "/play", ("video", 's'), (video_name, 's'))
 
             # debug
-            print("[media_picker]\tplay video [{}] on client [{}].\twait {} sec.".format(video_name, video_client, video_duration))
+            print("[media_picker]\tclient [{}]\tvideo [{}]".format(video_client, video_name))
+            print("[media_picker]\twait {:.2f}".format(video_duration))
             time.sleep(video_duration)
 
     # return a client object from an ID
@@ -82,10 +88,26 @@ class Erosion_Server :
         for cli in self.clients :
             send_osc_message(cli["OSC"], "/ping")
             cli["missing_pongs"] += 1
+
+            # check if client missed pings for
             if(cli["missing_pongs"] >= 5) :
-                print("Remove module with id [{}] and name [{}]".format(cli["ID"], cli["name"]))
+                # debug
+                print("[ping_pong]\tRemove client with id [{}] and name [{}]".format(cli["ID"], cli["name"]))
+
+                # remove all media related to this client
+                for media_type in self.media :
+                    media_to_remove = []
+                    for media_name in self.media[media_type] :
+                        media_clients = self.media[media_type][media_name]["clients"]
+                        if cli["ID"] in media_clients :
+                            media_clients.remove(cli["ID"])
+                            if len(media_clients) == 0 :
+                                media_to_remove.append(media_name)
+                    for media in media_to_remove :
+                        self.media[media_type].pop(media)
+
+                # remove client
                 self.clients.remove(cli)
-                # TODO : remove media relative to this client
 
     #
     def load_data(self) :
