@@ -68,7 +68,7 @@ class Erosion_Server :
             # debug
             print("[media_picker]\tclient [{}]\tvideo [{}]".format(video_client, video_name))
             print("[media_picker]\twait {:.2f}".format(video_duration))
-            time.sleep(video_duration)
+            time.sleep(video_duration + self.server_config["video_player_time_launch"])
 
     # return a client object from an ID
     def get_client_by_ID(self, _id) :
@@ -121,7 +121,7 @@ class Erosion_Server :
 
         # check if client is known
         for cli in self.clients :
-            if args[2] == cli["name"] :
+            if args[2] == cli["name"] and args[1] == cli["ID"]:
                 print("[on_hello]\tclient already connected.")
                 return
 
@@ -139,6 +139,7 @@ class Erosion_Server :
 
     # receiving media info from a client
     def on_media(self, address, *args) :
+        print("[on_media]\t{}".format(address))
         #print("[on_media]\t{}\t{}".format(address, args))
         for media in zip(args[2::2], args[3::2]) :
             if media[0] not in self.media[args[1]] :

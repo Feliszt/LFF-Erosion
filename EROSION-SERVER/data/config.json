@@ -2,5 +2,6 @@
   "ping_pong_interval"        : 5.0,
   "video_history_size"        : 50,
   "time_2_audio_min"          : 60.0,
-  "time_2_audio_max"          : 120.0
+  "time_2_audio_max"          : 120.0,
+  "video_player_time_launch"  : 1.0
 }

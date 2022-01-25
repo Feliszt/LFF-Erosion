@@ -19,7 +19,7 @@ class Erosion_Client :
 
         # play bg media
         play_media_command = [self.media_player, "background/bg_media.mp4", str(-1), str(0.99), str(0), str(0), str(0), "video"]
-        subprocess.Popen(play_media_command)
+        #subprocess.Popen(play_media_command)
 
     #
     def load_data(self) :

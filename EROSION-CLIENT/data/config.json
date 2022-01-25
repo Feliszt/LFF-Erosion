@@ -13,6 +13,5 @@
   "wait_ratio_min"            : 0.8,
   "wait_ratio_max"            : 2.0,
   "audio_volume"              : 7,
-  "video_volume"              : 1,
-  "video_player_time_launch"  : 1.0
+  "video_volume"              : 1
 }
