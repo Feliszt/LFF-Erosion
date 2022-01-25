@@ -11,8 +11,18 @@ void ofApp::setup() {
 
 	// get arguments
 	if (argc != 8 && argc != 1) {
-		cout << "[Pleine-mer_videoPlayer] RECEIVED " << argc << " ARGUMENTS. NEEDS 8." << endl;
+		cout << "[LFF-Erosion_player] RECEIVED " << argc << " ARGUMENTS. NEEDS 8." << endl;
 		ofExit();
+	}
+
+	// get config
+	ofJson client_config = ofLoadJson("../../../../data/config.json");
+	string media_folder = "";
+	if (client_config["video_folder"].is_null()) {
+		ofLog() << "[LFF - Erosion_player]\t" << "no video folder specified in config file. exit.";
+	}
+	if (client_config["audio_folder"].is_null()) {
+		ofLog() << "[LFF - Erosion_player]\t" << "no audio folder specified in config file. exit.";
 	}
 
 	// allow an option for 0 arguments
@@ -33,11 +43,14 @@ void ofApp::setup() {
 		windowPosY = stoi(argv[5]);
 		volume = stoi(argv[6]);
 		fileType = argv[7];
+		media_folder = "../../../../data/";
 	}
 
 	// init video player
 	if (fileType == "video") {
-		videoPlayer.load(fileName);
+		string video_path = media_folder + fileName;
+		ofLog() << video_path;
+		videoPlayer.load(video_path);
 		videoPlayer.play();
 		videoPlayer.setVolume(volume);
 		mediaWidth = int(videoPlayer.getWidth() * videoScale);
@@ -45,11 +58,12 @@ void ofApp::setup() {
 		loopCount = 0;
 	}
 	else if (fileType == "audioclip") {
+		string audio_path = media_folder + fileName;
 		loopCount = 0;
 		mediaWidth = 400;
 		mediaHeight = 200;
 		bufferSize = 512;
-		audioFile.load(fileName);
+		audioFile.load(audio_path);
 		float sampleRate = 44100.0;
 		ofSoundStreamSettings settings;
 		settings.setOutListener(this);

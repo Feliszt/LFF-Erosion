@@ -6,6 +6,9 @@
 
 # oF
 # global
+*.opendb
+*.db-shm
+*.db-wal
 *.rc
 *.sln
 *.vcxproj

@@ -7,6 +7,7 @@ from erosion_utils import *
 import os
 import subprocess
 import cv2
+import screeninfo
 
 class Erosion_Client :
 
@@ -22,29 +23,38 @@ class Erosion_Client :
 
     #
     def load_data(self) :
-        # debug
-        print("[load_data]\tloading data.")
-
         # get client config
         with open('data/config.json', 'r') as f_config :
             self.client_config = json.load(f_config)
 
-        # get data list
-        videos = os.listdir("./data/video/")
-        audios = os.listdir("./data/audio/")
+        # get screen size
+        if len(screeninfo.get_monitors()) == 0 :
+            print("[load_data]\tno screens connected to client. Quitting.")
+            quit()
+        if self.client_config["screen_id"] >= len(screeninfo.get_monitors()) :
+            print("[load_data]\tscreen id is too high.")
+            quit()
+        self.screen_width = screeninfo.get_monitors()[self.client_config["screen_id"]].width
+        self.screen_height = screeninfo.get_monitors()[self.client_config["screen_id"]].height
+        self.screen_offset_x = screeninfo.get_monitors()[self.client_config["screen_id"]].x
+        self.screen_offset_y = screeninfo.get_monitors()[self.client_config["screen_id"]].y
+        print("[load_data]\tscreen size = [{}, {}] @ [{}, {}]".format(self.screen_width, self.screen_height, self.screen_offset_x, self.screen_offset_y))
 
-        # create sendable media lists
+        # get data list
+        videos = os.listdir("./data/" + self.client_config["video_folder"])
+        audios = os.listdir("./data/" + self.client_config["audio_folder"])
+
+        # init media and media player info
+        print("[load_data]\tloading data.")
+        self.media_player = "./tools/" + self.client_config["media_player"]
         self.videos_arg = []
         self.audios_arg = []
         for el in videos :
             self.videos_arg.append((el, 's'))
-            self.videos_arg.append((self.get_duration("data/video/" + el), 'f'))
+            self.videos_arg.append((self.get_duration("./data/" + self.client_config["video_folder"] + "/" + el), 'f'))
         for el in audios :
             self.audios_arg.append((el, 's'))
-            self.audios_arg.append((self.get_duration("data/audio/" + el), 'f'))
-
-        # set
-        self.media_player = "./tools/" + self.client_config["media_player"]
+            self.audios_arg.append((self.get_duration("./data/" + self.client_config["audio_folder"] + "/" + el), 'f'))
 
         # debug
         print("[load_data]\tdone.")
@@ -128,6 +138,22 @@ class Erosion_Client :
     def on_play(self, address, *args) :
         # debug
         print("[on_play]\t{}\t{}".format(address, args))
+        print(args)
+
+        # check media type
+        media_folder = ""
+        if args[0] == "video" :
+            media_folder = self.client_config["video_folder"]
+        elif args[0] == "audio" :
+            media_folder = self.client_config["audio_folder"]
+        else :
+            print("[on_play]\tunknown media type.")
+            return
+
+        # play media
+        play_media_command = [self.media_player, media_folder + "/" + args[1], str(1), str(0.4), str(20), str(20), str(0), args[0]]
+        #print(play_media_command)
+        subprocess.Popen(play_media_command)
 
     # receive ping, send pong to server
     def on_ping(self, address, *args) :
