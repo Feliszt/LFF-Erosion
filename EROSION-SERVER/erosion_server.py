@@ -51,8 +51,16 @@ class Erosion_Server :
 
             # pick video
             video_to_read = ""
+            no_items = False
             while (video_to_read in video_history) or video_to_read == "":
-                video_to_read = random.choice(list(self.media["videos"].items()))
+                items = list(self.media["videos"].items())
+                if len(items) == 0 :
+                    print("AVANT LE BUG\t{}".format(items))
+                    no_items = True
+                    break
+                video_to_read = random.choice(items)
+            if no_items :
+                break
 
             # append to history
             video_history.append(video_to_read)
@@ -76,7 +84,7 @@ class Erosion_Server :
             send_osc_message(self.get_client_by_ID(video_client)["OSC"], "/play", ("video", 's'), (video_name, 's'))
 
             # debug
-            print("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait_duration = {:.2f}\tvideo_duration {:.2f}\tvideo_name : [{}]".format(video_client, self.time_to_end, wait_duration, video_duration, video_name))
+            print("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait = {:.2f}\tduration {:.2f}\t[{}]".format(video_client, self.time_to_end, wait_duration, video_duration, video_name))
             time.sleep(wait_duration)
 
             # compute time until end of videos

@@ -137,23 +137,42 @@ class Erosion_Client :
     # command to play media
     def on_play(self, address, *args) :
         # debug
-        print("[on_play]\t{}\t{}".format(address, args))
-        #print(args)
+        #print("[on_play]\t{}\t{}".format(address, args))
 
         # check media type
         media_folder = ""
-        if args[0] == "video" :
-            media_folder = self.client_config["video_folder"]
-        elif args[0] == "audio" :
-            media_folder = self.client_config["audio_folder"]
+        media_type = args[0]
+        if media_type == "video" :
+            media_folder    = self.client_config["video_folder"]
+            media_path      = media_folder + "/" + args[1]
+            cv2_vid         = cv2.VideoCapture("data/" + media_path)
+            media_width     = int(cv2_vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+            media_height    = int(cv2_vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            limit_ratio     = random.uniform(self.client_config["size_ratio_min"], self.client_config["size_ratio_max"])
+            media_scale     = math.sqrt(limit_ratio * self.screen_width * self.screen_height / (media_width * media_height))
+            media_pos_x     = int(self.screen_offset_x + random.uniform(self.client_config["border_window_x"], self.screen_width - media_width * media_scale - self.client_config["border_window_x"]))
+            media_pos_y     = int(self.screen_offset_y + random.uniform(self.client_config["border_window_y"], self.screen_height - media_height * media_scale - self.client_config["border_window_y"]))
+            media_vol       = self.client_config["video_volume"]
+        elif media_type == "audio" :
+            media_folder    = self.client_config["audio_folder"]
+            media_path      = media_folder + "/" + args[1]
+            media_width     = self.client_config["audio_width"]
+            media_height    = self.client_config["audio_height"]
+            media_scale     = 1
+            media_pos_x     = (self.screen_width - media_width) * 0.5
+            media_pos_y     = (self.screen_height - media_height) * 0.5
+            media_vol       = self.client_config["audio_volume"]
         else :
             print("[on_play]\tunknown media type.")
             return
 
         # play media
-        play_media_command = [self.media_player, media_folder + "/" + args[1], str(1), str(0.4), str(20), str(20), str(0), args[0]]
-        #print(play_media_command)
+        media_loop          = 1
+        play_media_command  = [self.media_player, media_path, str(media_loop), str(media_scale), str(media_pos_x), str(media_pos_y), str(media_vol), media_type]
         subprocess.Popen(play_media_command)
+
+        # debug
+        print("[on_play]\tpos : ({:03d}, {:03d})\tscale : {:.2f}\tvol : {}\t[{}]".format(media_pos_x, media_pos_y, media_scale, media_vol, args[1]))
 
     # receive ping, send pong to server
     def on_ping(self, address, *args) :
