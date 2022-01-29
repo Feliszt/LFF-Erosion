@@ -25,6 +25,7 @@
 *.exe
 *.suo
 *.res
+*.ipch
 # videoPlayer
 VISUALS/LFF-Erosion_player/bin/*
 VISUALS/LFF-Erosion_player/obj/*

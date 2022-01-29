@@ -138,7 +138,7 @@ class Erosion_Client :
     def on_play(self, address, *args) :
         # debug
         print("[on_play]\t{}\t{}".format(address, args))
-        print(args)
+        #print(args)
 
         # check media type
         media_folder = ""

@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 
 	// main window
 	settings.setSize(800, 800);
-	settings.setGLVersion(4, 5);
+	//settings.setGLVersion(4, 5);
 	settings.setPosition(ofVec2f(100, 100));
 	settings.decorated = false;
 	settings.resizable = false;
