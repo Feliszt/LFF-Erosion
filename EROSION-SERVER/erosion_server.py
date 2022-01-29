@@ -46,8 +46,10 @@ class Erosion_Server :
                 time.sleep(5)
                 continue
 
-            # get start time and pick video
+            # get time to compute duration of loop later
             loop_time_start = time.time()
+
+            # pick video
             video_to_read = ""
             while (video_to_read in video_history) or video_to_read == "":
                 video_to_read = random.choice(list(self.media["videos"].items()))
@@ -62,13 +64,26 @@ class Erosion_Server :
             video_client = random.choice(video_to_read[1]["clients"])
             video_duration = video_to_read[1]["duration"]
 
+            # compute ratio of time to end before next launch
+            wait_ratio = (self.server_config["wait_ratio_max"] - self.server_config["wait_ratio_min"]) * 0.25 * (math.sin(2 * self.wait_ratio_x) + math.sin(math.pi * self.wait_ratio_x)) + (self.server_config["wait_ratio_max"] + self.server_config["wait_ratio_min"]) * 0.5
+            self.wait_ratio_x = self.wait_ratio_x + 0.1
+
+            # compute time until end of all videos and wait duration
+            self.time_to_end += max(0.0, video_duration + self.server_config["video_player_time_launch"] - self.time_to_end)
+            wait_duration = self.time_to_end * wait_ratio
+
             # send play command to client
             send_osc_message(self.get_client_by_ID(video_client)["OSC"], "/play", ("video", 's'), (video_name, 's'))
 
             # debug
-            print("[media_picker]\tclient [{}]\tvideo [{}]".format(video_client, video_name))
-            print("[media_picker]\twait {:.2f}".format(video_duration))
-            time.sleep(video_duration + self.server_config["video_player_time_launch"])
+            print("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait_duration = {:.2f}\tvideo_duration {:.2f}\tvideo_name : [{}]".format(video_client, self.time_to_end, wait_duration, video_duration, video_name))
+            time.sleep(wait_duration)
+
+            # compute time until end of videos
+            loop_time_end =  time.time()
+            loop_duration = loop_time_end - loop_time_start
+            self.time_to_end -= loop_duration
+            self.time_to_end = max(0.0, self.time_to_end)
 
     # return a client object from an ID
     def get_client_by_ID(self, _id) :
@@ -111,6 +126,11 @@ class Erosion_Server :
 
     #
     def load_data(self) :
+        # init variables
+        self.next_id        = -1
+        self.wait_ratio_x   = random.uniform(0, 999)
+        self.time_to_end    = 0.0
+
         # get client config
         with open('data/config.json', 'r') as f_config :
             self.server_config = json.load(f_config)
@@ -126,9 +146,10 @@ class Erosion_Server :
                 return
 
         # store new client
+        self.next_id += 1
         self.clients.append({"OSC" : udp_client.SimpleUDPClient(args[0], args[1]),
         "IP" : args[0],
-        "ID" : len(self.clients),
+        "ID" : self.next_id,
         "name" : args[2],
         "missing_pongs": 0
         }
@@ -139,7 +160,7 @@ class Erosion_Server :
 
     # receiving media info from a client
     def on_media(self, address, *args) :
-        print("[on_media]\t{}".format(address))
+        print("[on_media]\treceive media info from client [{}]".format(args[0]))
         #print("[on_media]\t{}\t{}".format(address, args))
         for media in zip(args[2::2], args[3::2]) :
             if media[0] not in self.media[args[1]] :

@@ -12,6 +12,7 @@ import json
 import itertools
 import asyncio
 import random
+import math
 
 # wrapper for osc messages
 def send_osc_message(_osc_client, _address, *arg) :
