@@ -49,7 +49,6 @@ void ofApp::setup() {
 	// init video player
 	if (fileType == "video") {
 		string video_path = media_folder + fileName;
-		ofLog() << video_path;
 		videoPlayer.load(video_path);
 		videoPlayer.play();
 		videoPlayer.setVolume(volume);
