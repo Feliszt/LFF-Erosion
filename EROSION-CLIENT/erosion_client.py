@@ -11,7 +11,7 @@ import screeninfo
 class Erosion_Client :
 
     #
-    def __init__(self) :
+    def __init__(self) :        
         self.init_log()
         logging.info("[erosion_client]\tstart.")
         self.load_data()
@@ -197,7 +197,6 @@ class Erosion_Client :
         send_osc_message(self.client, "/pong", (self.client_id, 'i'))
 
 # run client
-os.system('mode 150,20')
 erosion_client = Erosion_Client()
 while True :
     continue
