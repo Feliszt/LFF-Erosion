@@ -8,7 +8,8 @@ from erosion_utils import *
 class Erosion_Server :
 
     def __init__(self) :
-        print("[erosion_server]\tstart.")
+        self.init_log()
+        logging.info("[erosion_server]\tstart.")
         self.load_data()
         self.run_network()
 
@@ -42,7 +43,7 @@ class Erosion_Server :
         while True :
             # skip loop as long as no media is present
             if len(self.media["videos"]) == 0 :
-                #print("[media_picker]\tmedia list is empty.")
+                #logging.info("[media_picker]\tmedia list is empty.")
                 time.sleep(5)
                 continue
 
@@ -85,13 +86,13 @@ class Erosion_Server :
             if (self.client_id_felix != -1 or self.client_id_ophelie != -1) and abs(self.time_audio_prev - self.time_iter) >= self.time_2_audio:
                 audio_info = "=> next is audio"
                 pick_audio = True
-                wait_duration = self.time_to_end
+                wait_duration = self.time_to_end + self.server_config["time_inter_media"]
 
             # send play command to client
             send_osc_message(self.get_client_by_ID(video_client)["OSC"], "/play", ("video", 's'), (video_name, 's'))
 
             # debug
-            print("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait = {:.2f}\tduration {:.2f}\t[{}] {}".format(video_client, self.time_to_end, wait_duration, video_duration, video_name, audio_info))
+            logging.info("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait = {:.2f}\t duration = {:.2f}\t[{}]\t\t{}".format(video_client, self.time_to_end, wait_duration, video_duration, video_name, audio_info))
             time.sleep(wait_duration)
 
             # compute time until end of videos
@@ -106,6 +107,7 @@ class Erosion_Server :
                 # get audio info
                 audio_name = list(self.media["audios"].items())[self.audio_file_ind][0]
                 audio_duration = list(self.media["audios"].items())[self.audio_file_ind][1]["duration"]
+                wait_duration = audio_duration + self.server_config["time_inter_media"]
                 self.time_2_audio = random.uniform(self.server_config["time_2_audio_min"], self.server_config["time_2_audio_max"])
 
                 # update variables
@@ -119,15 +121,15 @@ class Erosion_Server :
                 elif "ophelie" in audio_name :
                     audio_client = self.client_id_ophelie
                 if audio_client == -1 :
-                    print("[media_picker]\tcan't play media because no client is set for this media.")
+                    logging.info("[media_picker]\tcan't play media because no client is set for this media.")
                     self.time_audio_prev = self.time_iter
                     continue
 
-                print("[media_picker]\tclient [{}]\tduration {:.2f}\t[{}]".format(audio_client, audio_duration, audio_name))
+                logging.info("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait = {:.2f}\t duration = {:.2f}\t[{}]".format(audio_client, audio_duration, wait_duration, audio_duration, audio_name))
                 send_osc_message(self.get_client_by_ID(audio_client)["OSC"], "/play", ("audio", 's'), (audio_name, 's'))
 
                 # sleep
-                time.sleep(audio_duration)
+                time.sleep(wait_duration)
                 self.time_audio_prev = self.time_iter
 
     # return a client object from an ID
@@ -144,7 +146,8 @@ class Erosion_Server :
         t.daemon = True
         t.start()
 
-        print("felix id = [{}]\tophelie id = [{}]".format(self.client_id_felix, self.client_id_ophelie))
+        # debug
+        #logging.info("felix id = [{}]\tophelie id = [{}]".format(self.client_id_felix, self.client_id_ophelie))
 
         # ping all modules
         for cli in self.clients :
@@ -154,7 +157,7 @@ class Erosion_Server :
             # check if client missed pings for
             if(cli["missing_pongs"] >= 5) :
                 # debug
-                print("[ping_pong]\tRemove client with id [{}] and name [{}]".format(cli["ID"], cli["name"]))
+                logging.info("[ping_pong]\tRemove client with id [{}] and name [{}]".format(cli["ID"], cli["name"]))
 
                 # remove all media related to this client
                 for media_type in self.media :
@@ -196,14 +199,26 @@ class Erosion_Server :
         self.client_id_ophelie      = -1
         self.audio_file_ind         = 0
 
+    #
+    def init_log(self):
+        formatter = logging.Formatter("[%(asctime)s]\t%(message)s", datefmt='%d/%m/%Y - %H:%M:%S')
+        file_handler = logging.FileHandler("./data/erosion-server.log")
+        file_handler.setFormatter(formatter)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+
+        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger().addHandler(file_handler)
+        logging.getLogger().addHandler(stream_handler)
+
     # OSC commands
     def on_hello(self, address, *args) :
-        print("[on_hello]\t{}\t{}".format(address, args))
+        logging.info("[on_hello]\t{}\t{}".format(address, args))
 
         # check if client is known
         for cli in self.clients :
             if args[2] == cli["name"] and args[1] == cli["ID"]:
-                print("[on_hello]\tclient already connected.")
+                logging.info("[on_hello]\tclient already connected.")
                 return
 
         # store new client
@@ -231,8 +246,8 @@ class Erosion_Server :
 
     # receiving media info from a client
     def on_media(self, address, *args) :
-        print("[on_media]\treceive media info from client [{}]".format(args[0]))
-        #print("[on_media]\t{}\t{}".format(address, args))
+        logging.info("[on_media]\treceive {} info from client [{}]".format(args[1], args[0]))
+        #logging.info("[on_media]\t{}\t{}".format(address, args))
         for media in zip(args[2::2], args[3::2]) :
             if media[0] not in self.media[args[1]] :
                 self.media[args[1]][media[0]] = {}
@@ -242,7 +257,7 @@ class Erosion_Server :
 
     #
     def on_pong(self, address, *args) :
-        #print("[on_pong]\tclient [{}] sends pong.".format(args[0]))
+        #logging.info("[on_pong]\tclient [{}] sends pong.".format(args[0]))
         self.get_client_by_ID(args[0])["missing_pongs"] = 0
 
 

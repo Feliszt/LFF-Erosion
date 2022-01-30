@@ -12,7 +12,8 @@ class Erosion_Client :
 
     #
     def __init__(self) :
-        print("[erosion_client]\tstart.")
+        self.init_log()
+        logging.info("[erosion_client]\tstart.")
         self.load_data()
         self.run_network()
 
@@ -28,23 +29,23 @@ class Erosion_Client :
 
         # get screen size
         if len(screeninfo.get_monitors()) == 0 :
-            print("[load_data]\tno screens connected to client. Quitting.")
+            logging.info("[load_data]\tno screens connected to client. Quitting.")
             quit()
         if self.client_config["screen_id"] >= len(screeninfo.get_monitors()) :
-            print("[load_data]\tscreen id is too high.")
+            logging.info("[load_data]\tscreen id is too high.")
             quit()
         self.screen_width = screeninfo.get_monitors()[self.client_config["screen_id"]].width
         self.screen_height = screeninfo.get_monitors()[self.client_config["screen_id"]].height
         self.screen_offset_x = screeninfo.get_monitors()[self.client_config["screen_id"]].x
         self.screen_offset_y = screeninfo.get_monitors()[self.client_config["screen_id"]].y
-        print("[load_data]\tscreen size = [{}, {}] @ [{}, {}]".format(self.screen_width, self.screen_height, self.screen_offset_x, self.screen_offset_y))
+        logging.info("[load_data]\tscreen size = [{}, {}] @ [{}, {}]".format(self.screen_width, self.screen_height, self.screen_offset_x, self.screen_offset_y))
 
         # get data list
         videos = os.listdir("./data/" + self.client_config["video_folder"])
         audios = os.listdir("./data/" + self.client_config["audio_folder"])
 
         # init media and media player info
-        print("[load_data]\tloading data.")
+        logging.info("[load_data]\tloading data.")
         self.media_player = "./tools/" + self.client_config["media_player"]
         self.videos_arg = []
         self.audios_arg = []
@@ -60,7 +61,19 @@ class Erosion_Client :
             self.audios_arg.append((self.get_duration("./data/" + self.client_config["audio_folder"] + "/" + el), 'f'))
 
         # debug
-        print("[load_data]\tdone.")
+        logging.info("[load_data]\tdone.")
+
+    #
+    def init_log(self):
+        formatter = logging.Formatter("[%(asctime)s]\t%(message)s", datefmt='%d/%m/%Y - %H:%M:%S')
+        file_handler = logging.FileHandler("./data/erosion-server.log")
+        file_handler.setFormatter(formatter)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+
+        logging.getLogger().setLevel(logging.INFO)
+        logging.getLogger().addHandler(file_handler)
+        logging.getLogger().addHandler(stream_handler)
 
     #
     def run_network(self) :
@@ -87,7 +100,7 @@ class Erosion_Client :
 
         # attempt connecting to server until done
         while self.client_id == -1 :
-            print("[connect_to_server]\tAttempt connection.")
+            logging.info("[connect_to_server]\tAttempt connection.")
             send_osc_message(self.client, "/hello",
                 (self.client_ip, 's'),
                 (self.client_port, 'i'),
@@ -101,7 +114,7 @@ class Erosion_Client :
             time.sleep(10)
             time_2_last_ping = abs(self.ping_time - time.time())
             if time_2_last_ping >= 5 * self.server_ping_inter :
-                print("[check_server_pings]\tserver disconnect.")
+                logging.info("[check_server_pings]\tserver disconnect.")
                 self.client_id = -1
         launch_thread(self.connect_to_server)
 
@@ -125,7 +138,7 @@ class Erosion_Client :
     # OSC commands
     def on_welcome(self, address, *args) :
         # debug
-        print("[on_welcome]\t{}\t{}".format(address, args))
+        logging.info("[on_welcome]\t{}\t{}".format(address, args))
 
         #
         self.server_ip = args[0]
@@ -141,7 +154,7 @@ class Erosion_Client :
     # command to play media
     def on_play(self, address, *args) :
         # debug
-        #print("[on_play]\t{}\t{}".format(address, args))
+        #logging.info("[on_play]\t{}\t{}".format(address, args))
 
         # check media type
         media_folder = ""
@@ -164,7 +177,7 @@ class Erosion_Client :
             media_pos_y     = int((self.screen_height - media_height) * 0.5)
             media_vol       = self.client_config["audio_volume"]
         else :
-            print("[on_play]\tunknown media type.")
+            logging.info("[on_play]\tunknown media type.")
             return
 
         # play media
@@ -174,12 +187,12 @@ class Erosion_Client :
         subprocess.Popen(play_media_command)
 
         # debug
-        print("[on_play]\tpos : ({:03d}, {:03d})\tscale : {:.2f}\tvol : {}\t[{}]".format(media_pos_x, media_pos_y, media_scale, media_vol, args[1]))
+        logging.info("[on_play]\tpos : ({:03d}, {:03d})\tscale : {:.2f}\tvol : {}\t[{}]".format(media_pos_x, media_pos_y, media_scale, media_vol, args[1]))
 
     # receive ping, send pong to server
     def on_ping(self, address, *args) :
         # debug
-        #print("[on_ping]\tclient [{}] receives ping.".format(self.client_id))
+        #logging.info("[on_ping]\tclient [{}] receives ping.".format(self.client_id))
         self.ping_time = time.time()
         send_osc_message(self.client, "/pong", (self.client_id, 'i'))
 

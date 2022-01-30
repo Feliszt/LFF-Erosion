@@ -1,9 +1,10 @@
 {
-  "ping_pong_interval"        : 1.0,
-  "video_history_size"        : 0,
+  "ping_pong_interval"        : 2.0,
+  "video_history_size"        : 50,
   "wait_ratio_min"            : 0.8,
   "wait_ratio_max"            : 1.5,
-  "time_2_audio_min"          : 1.0,
-  "time_2_audio_max"          : 1.0,
+  "time_2_audio_min"          : 120.0,
+  "time_2_audio_max"          : 180.0,
+  "time_inter_media"          : 2.0,
   "video_player_time_launch"  : 1.0
 }

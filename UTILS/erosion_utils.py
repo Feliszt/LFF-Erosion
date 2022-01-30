@@ -14,6 +14,7 @@ import itertools
 import asyncio
 import random
 import math
+import logging
 
 # wrapper for osc messages
 def send_osc_message(_osc_client, _address, *arg) :
