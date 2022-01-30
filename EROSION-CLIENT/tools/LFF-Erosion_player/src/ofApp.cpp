@@ -27,13 +27,15 @@ void ofApp::setup() {
 
 	// allow an option for 0 arguments
 	if (argc == 1) {
-		fileName = "feuilles02_400x400.mp4";
-		numLoop = 3;
+		//fileType = "video";
+		fileType = "audio";
+		//fileName = "feuilles02_400x400.mp4";
+		fileName = "01_felix.mp3";
+		numLoop = 1;
 		videoScale = 0.65;
 		windowPosX = 20;
 		windowPosY = 20;
 		volume = 1.0;
-		fileType = "video";
 	}
 	else {
 		fileName = argv[1];
@@ -43,26 +45,23 @@ void ofApp::setup() {
 		windowPosY = stoi(argv[5]);
 		volume = stoi(argv[6]);
 		fileType = argv[7];
-		media_folder = "../../../../data/";
 	}
 
 	// init video player
 	if (fileType == "video") {
-		string video_path = media_folder + fileName;
-		videoPlayer.load(video_path);
+		videoPlayer.load(fileName);
 		videoPlayer.play();
 		videoPlayer.setVolume(volume);
 		mediaWidth = int(videoPlayer.getWidth() * videoScale);
 		mediaHeight = int(videoPlayer.getHeight() * videoScale);
 		loopCount = 0;
 	}
-	else if (fileType == "audioclip") {
-		string audio_path = media_folder + fileName;
+	else if (fileType == "audio") {
 		loopCount = 0;
 		mediaWidth = 400;
 		mediaHeight = 200;
 		bufferSize = 512;
-		audioFile.load(audio_path);
+		audioFile.load(fileName);
 		float sampleRate = 44100.0;
 		ofSoundStreamSettings settings;
 		settings.setOutListener(this);
@@ -139,7 +138,7 @@ void ofApp::draw() {
 		progressBarX = ofMap(audioStreamPos, 0, audioFile.length(), progressBarOffset, mediaWidth - 2 * progressBarOffset);
 	}
 
-	if (fileType == "audioclip") {
+	if (fileType == "audio") {
 		ofSetColor(0);
 		ofNoFill();
 		ofSetLineWidth(5);

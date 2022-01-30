@@ -55,7 +55,6 @@ class Erosion_Server :
             while (video_to_read in video_history) or video_to_read == "":
                 items = list(self.media["videos"].items())
                 if len(items) == 0 :
-                    print("AVANT LE BUG\t{}".format(items))
                     no_items = True
                     break
                 video_to_read = random.choice(items)
@@ -80,18 +79,56 @@ class Erosion_Server :
             self.time_to_end += max(0.0, video_duration + self.server_config["video_player_time_launch"] - self.time_to_end)
             wait_duration = self.time_to_end * wait_ratio
 
+            # check if audio
+            pick_audio = False
+            audio_info = ""
+            if (self.client_id_felix != -1 or self.client_id_ophelie != -1) and abs(self.time_audio_prev - self.time_iter) >= self.time_2_audio:
+                audio_info = "=> next is audio"
+                pick_audio = True
+                wait_duration = self.time_to_end
+
             # send play command to client
             send_osc_message(self.get_client_by_ID(video_client)["OSC"], "/play", ("video", 's'), (video_name, 's'))
 
             # debug
-            print("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait = {:.2f}\tduration {:.2f}\t[{}]".format(video_client, self.time_to_end, wait_duration, video_duration, video_name))
+            print("[media_picker]\tclient [{}]\ttime_to_end = {:.2f}\twait = {:.2f}\tduration {:.2f}\t[{}] {}".format(video_client, self.time_to_end, wait_duration, video_duration, video_name, audio_info))
             time.sleep(wait_duration)
 
             # compute time until end of videos
             loop_time_end =  time.time()
             loop_duration = loop_time_end - loop_time_start
+            self.time_iter =  self.time_iter + loop_duration
             self.time_to_end -= loop_duration
             self.time_to_end = max(0.0, self.time_to_end)
+
+            # if audio
+            if pick_audio :
+                # get audio info
+                audio_name = list(self.media["audios"].items())[self.audio_file_ind][0]
+                audio_duration = list(self.media["audios"].items())[self.audio_file_ind][1]["duration"]
+                self.time_2_audio = random.uniform(self.server_config["time_2_audio_min"], self.server_config["time_2_audio_max"])
+
+                # update variables
+                self.audio_file_ind = self.audio_file_ind + 1
+                if self.audio_file_ind >= len(list(self.media["audios"].items())) :
+                    self.audio_file_ind = 0
+
+                # send play command to client
+                if "felix" in audio_name :
+                    audio_client = self.client_id_felix
+                elif "ophelie" in audio_name :
+                    audio_client = self.client_id_ophelie
+                if audio_client == -1 :
+                    print("[media_picker]\tcan't play media because no client is set for this media.")
+                    self.time_audio_prev = self.time_iter
+                    continue
+
+                print("[media_picker]\tclient [{}]\tduration {:.2f}\t[{}]".format(audio_client, audio_duration, audio_name))
+                send_osc_message(self.get_client_by_ID(audio_client)["OSC"], "/play", ("audio", 's'), (audio_name, 's'))
+
+                # sleep
+                time.sleep(audio_duration)
+                self.time_audio_prev = self.time_iter
 
     # return a client object from an ID
     def get_client_by_ID(self, _id) :
@@ -106,6 +143,8 @@ class Erosion_Server :
         t = threading.Timer(self.server_config["ping_pong_interval"], self.ping_pong)
         t.daemon = True
         t.start()
+
+        print("felix id = [{}]\tophelie id = [{}]".format(self.client_id_felix, self.client_id_ophelie))
 
         # ping all modules
         for cli in self.clients :
@@ -130,18 +169,32 @@ class Erosion_Server :
                         self.media[media_type].pop(media)
 
                 # remove client
+                if cli["audio_type"] == "felix" :
+                    self.client_id_felix = -1
+                if cli["audio_type"] == "ophelie" :
+                    self.client_id_ophelie = -1
+                if cli["audio_type"] == "both" :
+                    self.client_id_felix = -1
+                    self.client_id_ophelie = -1
+                    self.audio_file_ind = 0
                 self.clients.remove(cli)
 
     #
     def load_data(self) :
-        # init variables
-        self.next_id        = -1
-        self.wait_ratio_x   = random.uniform(0, 999)
-        self.time_to_end    = 0.0
-
         # get client config
         with open('data/config.json', 'r') as f_config :
             self.server_config = json.load(f_config)
+
+        # init variables
+        self.next_id                = -1
+        self.wait_ratio_x           = random.uniform(0, 999)
+        self.time_iter              = 0.0
+        self.time_audio_prev        = 0.0
+        self.time_2_audio           = random.uniform(self.server_config["time_2_audio_min"], self.server_config["time_2_audio_max"])
+        self.time_to_end            = 0.0
+        self.client_id_felix        = -1
+        self.client_id_ophelie      = -1
+        self.audio_file_ind         = 0
 
     # OSC commands
     def on_hello(self, address, *args) :
@@ -159,9 +212,19 @@ class Erosion_Server :
         "IP" : args[0],
         "ID" : self.next_id,
         "name" : args[2],
+        "audio_type" : args[3],
         "missing_pongs": 0
         }
         )
+
+        # check audio type
+        if self.clients[-1]["audio_type"] == "felix" :
+            self.client_id_felix    = self.clients[-1]["ID"]
+        if self.clients[-1]["audio_type"] == "ophelie" :
+            self.client_id_ophelie  = self.clients[-1]["ID"]
+        if self.clients[-1]["audio_type"] == "both" :
+            self.client_id_felix    = self.clients[-1]["ID"]
+            self.client_id_ophelie  = self.clients[-1]["ID"]
 
         # respond back with welcome
         send_osc_message(self.clients[-1]["OSC"], "/welcome", (self.server_ip, "s"), (self.clients[-1]["ID"], "i"), (self.server_config["ping_pong_interval"], 'f'))

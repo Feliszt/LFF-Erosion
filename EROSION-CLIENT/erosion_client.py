@@ -4,7 +4,6 @@ sys.path.append("./../UTILS/")
 
 # utils
 from erosion_utils import *
-import os
 import subprocess
 import cv2
 import screeninfo
@@ -49,9 +48,13 @@ class Erosion_Client :
         self.media_player = "./tools/" + self.client_config["media_player"]
         self.videos_arg = []
         self.audios_arg = []
+        self.video_sz = {}
         for el in videos :
+            video_path = "./data/" + self.client_config["video_folder"] + "/" + el
             self.videos_arg.append((el, 's'))
-            self.videos_arg.append((self.get_duration("./data/" + self.client_config["video_folder"] + "/" + el), 'f'))
+            self.videos_arg.append((self.get_duration(video_path), 'f'))
+            cv2_vid = cv2.VideoCapture(video_path)
+            self.video_sz[el] = {"width" : int(cv2_vid.get(cv2.CAP_PROP_FRAME_WIDTH)), "height" : int(cv2_vid.get(cv2.CAP_PROP_FRAME_HEIGHT))}
         for el in audios :
             self.audios_arg.append((el, 's'))
             self.audios_arg.append((self.get_duration("./data/" + self.client_config["audio_folder"] + "/" + el), 'f'))
@@ -88,7 +91,8 @@ class Erosion_Client :
             send_osc_message(self.client, "/hello",
                 (self.client_ip, 's'),
                 (self.client_port, 'i'),
-                (self.client_config["name"], 's'))
+                (self.client_config["name"], 's'),
+                (self.client_config["audio_type"], 's'))
             time.sleep(2)
 
     #
@@ -144,10 +148,8 @@ class Erosion_Client :
         media_type = args[0]
         if media_type == "video" :
             media_folder    = self.client_config["video_folder"]
-            media_path      = media_folder + "/" + args[1]
-            cv2_vid         = cv2.VideoCapture("data/" + media_path)
-            media_width     = int(cv2_vid.get(cv2.CAP_PROP_FRAME_WIDTH))
-            media_height    = int(cv2_vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            media_width     = self.video_sz[args[1]]["width"]
+            media_height    = self.video_sz[args[1]]["height"]
             limit_ratio     = random.uniform(self.client_config["size_ratio_min"], self.client_config["size_ratio_max"])
             media_scale     = math.sqrt(limit_ratio * self.screen_width * self.screen_height / (media_width * media_height))
             media_pos_x     = int(self.screen_offset_x + random.uniform(self.client_config["border_window_x"], self.screen_width - media_width * media_scale - self.client_config["border_window_x"]))
@@ -155,12 +157,11 @@ class Erosion_Client :
             media_vol       = self.client_config["video_volume"]
         elif media_type == "audio" :
             media_folder    = self.client_config["audio_folder"]
-            media_path      = media_folder + "/" + args[1]
             media_width     = self.client_config["audio_width"]
             media_height    = self.client_config["audio_height"]
             media_scale     = 1
-            media_pos_x     = (self.screen_width - media_width) * 0.5
-            media_pos_y     = (self.screen_height - media_height) * 0.5
+            media_pos_x     = int((self.screen_width - media_width) * 0.5)
+            media_pos_y     = int((self.screen_height - media_height) * 0.5)
             media_vol       = self.client_config["audio_volume"]
         else :
             print("[on_play]\tunknown media type.")
@@ -168,7 +169,8 @@ class Erosion_Client :
 
         # play media
         media_loop          = 1
-        play_media_command  = [self.media_player, media_path, str(media_loop), str(media_scale), str(media_pos_x), str(media_pos_y), str(media_vol), media_type]
+        media_abs_path = os.path.abspath("data/" + media_folder + "/" + args[1])
+        play_media_command  = [self.media_player, media_abs_path, str(media_loop), str(media_scale), str(media_pos_x), str(media_pos_y), str(media_vol), media_type]
         subprocess.Popen(play_media_command)
 
         # debug
