@@ -197,6 +197,7 @@ class Erosion_Client :
         send_osc_message(self.client, "/pong", (self.client_id, 'i'))
 
 # run client
+os.system('mode 150,20')
 erosion_client = Erosion_Client()
 while True :
     continue

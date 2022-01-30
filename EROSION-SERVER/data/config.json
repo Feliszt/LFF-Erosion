@@ -1,5 +1,5 @@
 {
-  "ping_pong_interval"        : 2.0,
+  "ping_pong_interval"        : 3.0,
   "video_history_size"        : 50,
   "wait_ratio_min"            : 0.8,
   "wait_ratio_max"            : 1.5,
