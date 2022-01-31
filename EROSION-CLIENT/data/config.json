@@ -5,6 +5,7 @@
   "video_folder"              : "video_test",
   "audio_folder"              : "audio",
   "audio_type"                : "both",
+  "bg_media"                  : "bg_media_1920x1080.mp4",
   "border_window_x"           : 50,
   "border_window_y"           : 50,
   "size_ratio_min"            : 0.08,

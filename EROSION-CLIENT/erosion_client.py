@@ -11,15 +11,20 @@ import screeninfo
 class Erosion_Client :
 
     #
-    def __init__(self) :        
+    def __init__(self) :
         self.init_log()
         logging.info("[erosion_client]\tstart.")
         self.load_data()
         self.run_network()
 
         # play bg media
-        play_media_command = [self.media_player, "background/bg_media.mp4", str(-1), str(0.99), str(0), str(0), str(0), "video"]
-        #subprocess.Popen(play_media_command)
+        bgmedia_abs_path = os.path.abspath("data/background/" + self.client_config["bg_media"])
+        if os.path.isfile(bgmedia_abs_path) :
+            play_media_command = [self.media_player, bgmedia_abs_path, str(-1), str(0.99), str(0), str(0), str(0), "video"]
+            subprocess.Popen(play_media_command)
+        else :
+            logging.info("[__init__]\tcan't find background file.")
+
 
     #
     def load_data(self) :
